@@ -21,11 +21,15 @@ import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 
+/**
+ * Each MemoryInfo corresponding to a MMAP file, it contains multi BufferBlockInfo
+ * because each MBB can't greater than Integer.MAX_VALUE
+ */
 public class MemoryInfo {
-
     long memCapacity;
     FileChannel channel = null;
     RandomAccessFile rdmFile = null;
+    // each BufferBlockInfo corresponding to 2GB MBB
     ArrayList<BufferBlockInfo> byteBufferBlocksList = new ArrayList<>();
 
     protected void setMemCapacity(long capacity) {
@@ -59,5 +63,4 @@ public class MemoryInfo {
     public void setByteBufferBlocksList(BufferBlockInfo bufferBlockInfo) {
         byteBufferBlocksList.add(bufferBlockInfo);
     }
-
 }

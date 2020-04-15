@@ -187,7 +187,8 @@ public interface VolatileMemoryAllocatorService extends QueryableService {
   long capacity(long id);
 
   /**
-   * allocate specified size of memory block from backed memory pool.
+   * allocate specified size of memory block from backed memory pool.<br>
+   * if there are no suitable space, this will return 0
    * 
    * @param id
    *          the identifier of backed memory pool
@@ -203,7 +204,8 @@ public interface VolatileMemoryAllocatorService extends QueryableService {
   long allocate(long id, long size, boolean initzero);
 
   /**
-   * reallocate a specified size of memory block from backed memory pool.
+   * reallocate a specified size of memory block from backed memory pool.<br>
+   * generally used to expand the target BB
    * 
    * @param id
    *          the identifier of backed memory pool
@@ -270,7 +272,8 @@ public interface VolatileMemoryAllocatorService extends QueryableService {
   ByteBuffer resizeByteBuffer(long id, ByteBuffer bytebuf, long size);
 
   /**
-   * destroy a native memory block backed ByteBuffer object.
+   * destroy a native memory block backed ByteBuffer object.<br>
+   * mark the chunk's bitset as not used, and remove them from BufferBlockInfo#chunkSizeMap
    * 
    * @param id
    *          the identifier of backed memory pool

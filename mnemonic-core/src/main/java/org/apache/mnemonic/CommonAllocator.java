@@ -65,7 +65,8 @@ public abstract class CommonAllocator<A extends CommonAllocator<A>> implements A
   public abstract long shrink(long size);
 
   /**
-   * set a reclaimer to reclaim memory buffer
+   * set a reclaimer to reclaim memory buffer<br>
+   * the callback method when the target resource reclaimed
    * 
    * @param reclaimer
    *          specify a reclaimer to accept reclaim request

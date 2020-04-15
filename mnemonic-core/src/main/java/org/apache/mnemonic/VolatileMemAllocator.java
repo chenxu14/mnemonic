@@ -32,11 +32,8 @@ import java.nio.ByteBuffer;
 
 /**
  * manage a big native memory pool through underlying memory service.
- * 
- *
  */
 public class VolatileMemAllocator extends RestorableAllocator<VolatileMemAllocator> {
-
   private boolean m_activegc = true;
   private long m_gctimeout = 100;
   private long m_nid = -1;
@@ -74,6 +71,7 @@ public class VolatileMemAllocator extends RestorableAllocator<VolatileMemAllocat
     }
 
     m_vmasvc = vmasvc;
+    // TODO isnew always true
     m_nid = m_vmasvc.init(capacity, uri, true);
 
     /**
@@ -134,7 +132,7 @@ public class VolatileMemAllocator extends RestorableAllocator<VolatileMemAllocat
 
   /**
    * disable active garbage collection.
-   *
+   * TODO should call this in hbase case
    * @return this allocator
    */
   @Override
@@ -286,10 +284,12 @@ public class VolatileMemAllocator extends RestorableAllocator<VolatileMemAllocat
       addr = m_vmasvc.allocate(m_nid, size, true);
     }
     if (0 != addr) {
+      // build DurableChunk with the specify addr and size
       ret = new DurableChunk<VolatileMemAllocator>(this, addr, size);
-      ret.setCollector(m_chunkcollector);
-      if (autoreclaim) {
-        m_chunkcollector.register(ret, rctx);
+      // register it to m_chunkcollector, so when DurableChunk#destroy called, the space can be reclaimed 
+      ret.setCollector(m_chunkcollector); 
+      if (autoreclaim) { // in hbase case we should set autoreclaim to false?
+        m_chunkcollector.register(ret, rctx); // use PhantomReference to manage space reclaim
       }
     }
     return ret;
@@ -322,6 +322,7 @@ public class VolatileMemAllocator extends RestorableAllocator<VolatileMemAllocat
       ret = new DurableBuffer<VolatileMemAllocator>(this, bb);
       ret.setCollector(m_bufcollector);
       if (autoreclaim) {
+        // use PhantomReference to manage space reclaim, no need to do this with hbase
         m_bufcollector.register(ret, rctx);
       }
     }

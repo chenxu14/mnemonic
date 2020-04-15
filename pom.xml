@@ -87,8 +87,10 @@
     <module>mnemonic-collections</module>
     <module>mnemonic-examples</module>
     <module>mnemonic-memory-services</module>
+    <!--
     <module>mnemonic-computing-services</module>
     <module>mnemonic-query</module>
+    -->
     <module>mnemonic-common</module>
   </modules>
 
@@ -112,9 +114,7 @@
     <logback.version>1.1.7</logback.version>
     <javadoc.opts></javadoc.opts>
   </properties>
-
-  <repositories>
-  </repositories>
+  
   <pluginRepositories>
   </pluginRepositories>
 
@@ -276,6 +276,7 @@
           <scmBranch>gh-pages</scmBranch> <!-- branch with static site -->
         </configuration>
       </plugin>
+      <!--
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
@@ -283,6 +284,19 @@
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
+      </plugin>
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
     <pluginManagement>
@@ -553,10 +567,12 @@
       <jdk>[1.6,1.8]</jdk>
     </activation>
     <modules>
+      <!--
       <module>mnemonic-benches</module>
       <module>mnemonic-sessions</module>
       <module>mnemonic-hadoop</module>
       <module>mnemonic-spark</module>
+      -->
     </modules>
   </profile>
 </profiles>

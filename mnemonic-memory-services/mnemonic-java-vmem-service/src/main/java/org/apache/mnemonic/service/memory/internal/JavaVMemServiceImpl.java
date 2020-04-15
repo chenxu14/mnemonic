@@ -17,7 +17,6 @@
 
 package org.apache.mnemonic.service.memory.internal;
 
-
 import org.apache.mnemonic.ConfigurationException;
 import org.apache.mnemonic.query.memory.EntityInfo;
 import org.apache.mnemonic.query.memory.ResultSet;
@@ -25,7 +24,6 @@ import org.apache.mnemonic.service.computing.ValueInfo;
 import org.apache.mnemonic.service.memory.MemoryServiceFeature;
 import org.apache.mnemonic.service.memory.VolatileMemoryAllocatorService;
 import org.flowcomputing.commons.resgc.ReclaimContext;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -37,15 +35,17 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileChannel.MapMode;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashSet;
 import java.util.Set;
 
-
+/**
+ * Corresponding to MMAP BB Pool
+ */
 public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
 
-  protected static final int CHUNK_BLOCK_SIZE = 512;
+  protected static final int CHUNK_BLOCK_SIZE = 1048576; // 1M
   protected static final MapMode MAP_MODE = MapMode.READ_WRITE;
   protected static final int MAX_BUFFER_BLOCK_SIZE = Integer.MAX_VALUE;
-
   protected ArrayList<MemoryInfo> mem_pools = new ArrayList<MemoryInfo>();
 
   @Override
@@ -55,7 +55,6 @@ public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
 
   @Override
   public long init(long capacity, String uri, boolean isnew) {
-    FileChannel channel = null;
     RandomAccessFile mappedFile = null;
     long cp = -1;
     long ret = -1;
@@ -172,8 +171,8 @@ public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
     long handler = 0L;
     int bufSize = (int)size;
     MemoryInfo mi = this.getMemPools().get((int)id);
-    FileChannel fc = mi.getFileChannel();
     ArrayList<BufferBlockInfo> bufferBlockInfo = mi.getByteBufferBlocksList();
+    // calculate how many chunks are needed
     int requiredBlocks = (int)Math.ceil((double)bufSize / CHUNK_BLOCK_SIZE);
 
     if (size > MAX_BUFFER_BLOCK_SIZE) {
@@ -181,21 +180,24 @@ public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
     }
     for (int blockIdx = 0; blockIdx < bufferBlockInfo.size(); blockIdx++) {
       BitSet chunksMap = bufferBlockInfo.get(blockIdx).bufferBlockChunksMap;
+      // find a space to hold this data
       int startIdx = findStartIdx(chunksMap, requiredBlocks);
       if (startIdx > -1) {
         handler = bufferBlockInfo.get(blockIdx).getBufferBlockBaseAddress() + startIdx * CHUNK_BLOCK_SIZE;
+        // create MBB with the target space
         bb = createChunkBuffer(handler, bufSize);
         if (initzero) {
           for (int i = 0; i < bufSize; i++) {
             bb.put((byte)0);
           }
         }
+        // make the chunk space as used
         markUsed(chunksMap, startIdx, requiredBlocks);
+        // add the used space to BufferBlockInfo#chunkSizeMap
         mi.getByteBufferBlocksList().get(blockIdx).setChunkSizeMap(handler, bufSize);
         break;
       }
     }
-
     return handler;
   }
 
@@ -220,7 +222,6 @@ public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
   @Override
   public void free(long id, long addr, ReclaimContext rctx) {
     MemoryInfo mi = this.getMemPools().get((int)id);
-    FileChannel channel = mi.getFileChannel();
     int startIdx, requiredblocks, size;
     long baseAddr;
     try {
@@ -245,7 +246,6 @@ public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
   public ByteBuffer createByteBuffer(long id, long size) {
     ByteBuffer bb = null;
     MemoryInfo mi = this.getMemPools().get((int)id);
-    FileChannel fc = mi.getFileChannel();
     ArrayList<BufferBlockInfo> bufferBlockInfo = mi.getByteBufferBlocksList();
     int bufSize = (int)size;
     int requiredBlocks = (int)Math.ceil((double)bufSize / CHUNK_BLOCK_SIZE);
@@ -281,7 +281,6 @@ public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
   @Override
   public void destroyByteBuffer(long id, ByteBuffer bytebuf, ReclaimContext rctx) {
     MemoryInfo mi = this.getMemPools().get((int)id);
-    FileChannel channel = mi.getFileChannel();
     int startIdx, requiredblocks;
     long handler, baseAddr;
     try {
@@ -306,6 +305,7 @@ public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
   public ByteBuffer retrieveByteBuffer(long id, long handler) {
     ByteBuffer bb = null;
     MemoryInfo mi = this.getMemPools().get((int)id);
+    // TODO binary search
     int size;
     for (int blockIdx = 0; blockIdx < mi.getByteBufferBlocksList().size(); blockIdx++) {
       BufferBlockInfo blockInfo = mi.getByteBufferBlocksList().get(blockIdx);
@@ -335,6 +335,7 @@ public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
   public long getByteBufferHandler(long id, ByteBuffer buf) {
     long handler = 0L;
     try {
+      // TODO Unsafe access
       Field addressField = Buffer.class.getDeclaredField("address");
       addressField.setAccessible(true);
       handler = addressField.getLong(buf);
@@ -388,7 +389,9 @@ public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
 
   @Override
   public Set<MemoryServiceFeature> getFeatures() {
-    return null;
+    Set<MemoryServiceFeature> ret = new HashSet<MemoryServiceFeature>();
+    ret.add(MemoryServiceFeature.VOLATILE);
+    return ret;
   }
 
   @Override
@@ -415,6 +418,9 @@ public class JavaVMemServiceImpl implements VolatileMemoryAllocatorService {
     return this.mem_pools;
   }
 
+  /**
+   * this method can make sure the chunks space which returned is continuous
+   */
   public int findStartIdx(BitSet blocksMap, int requiredBlocks) {
     int startIdx = -1, blocks = 0, idx = 0;
     for (idx = 0; idx < blocksMap.size(); ++idx) {

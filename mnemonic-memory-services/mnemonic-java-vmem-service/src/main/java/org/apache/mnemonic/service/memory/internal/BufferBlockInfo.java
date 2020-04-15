@@ -23,12 +23,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class BufferBlockInfo {
-    long bufferBlockBaseAddress = 0L;
-    int bufferBlockSize;
-    ByteBuffer bufferBlock = null;
+    long bufferBlockBaseAddress = 0L; // the begin offset of the MBB
+    int bufferBlockSize; // the MBB's size
+    ByteBuffer bufferBlock = null; // the memory data
 
-    BitSet bufferBlockChunksMap = null;
-    Map<Long, Integer> chunkSizeMap = new HashMap<>();
+    // each BufferBlockInfo will divided into multiple chunks
+    BitSet bufferBlockChunksMap = null; // mark whether each chunk has been used
+    Map<Long, Integer> chunkSizeMap = new HashMap<>(); // chunks offset -> chunks size
 
     public ByteBuffer getBufferBlock() {
         return bufferBlock;
@@ -69,7 +70,4 @@ public class BufferBlockInfo {
     public void setChunkSizeMap(long chunkHandler, int chunkSize) {
         chunkSizeMap.put(chunkHandler, chunkSize);
     }
-
-
-
 }
